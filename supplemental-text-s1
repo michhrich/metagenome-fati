@@ -1,0 +1,98 @@
+import os
+from Bio import SeqIO
+
+write_handle = open("Compilation_01.csv", "w")
+write_handle.write("File,Accession,Description,Length,GC count,% GC,Total gene count,Total ATG start codon count,Total (C)ATG start codon count,Total (G)ATG start codon count,Total (A)ATG start codon count,Total (T)ATG start codon count,Total GTG start codon count,Total (C)GTG start codon count,Total (G)GTG start codon count,Total (A)GTG start codon count,Total (T)GTG start codon count,Total TTG start codon count,Total (C)TTG start codon count,Total (G)TTG start codon count,Total (A)TTG start codon count,Total (T)TTG start codon count\n") 
+                   
+for root, dirs, files in os.walk("."):  
+    for filename in files:
+        if filename.endswith(".gbff"):
+            print (filename)            
+            for gb_record in SeqIO.parse(open(filename, 'r'), "genbank"):
+                print (gb_record.description)
+                if "plasmid" not in gb_record.description:
+                    total_gene_count=0
+                    GC_count=0
+                    percentage_gc=0
+                    length=len(gb_record.seq)
+                    description=gb_record.description
+                    description="\"" + description + "\""
+                    
+                    ATG_count=0
+                    CATG_count=0
+                    GATG_count=0
+                    AATG_count=0
+                    TATG_count=0
+                    
+                    GTG_count=0
+                    CGTG_count=0
+                    GGTG_count=0
+                    AGTG_count=0
+                    TGTG_count=0
+                    
+                    TTG_count=0
+                    CTTG_count=0
+                    GTTG_count=0
+                    ATTG_count=0
+                    TTTG_count=0
+                    
+                    for n in range(0,len(gb_record.features)):                    
+                        feature=gb_record.features[n] #Labels features
+                        if feature.type=="CDS": #Only looking for CDS features
+                            location=feature.location #Finds location of CDS within chromosome e.g. [100:300] (+) 
+                            start=location.start #Start location of CDS e.g. 100
+                            end=location.end #End location of CDS e.g. 300
+                            strand=location.strand #Strand - positive (forward) or negative (reverse)
+                            if strand==1: #If CDS is located on forward strand of chromosome
+                                gene=gb_record.seq[start-3:end] #extract entire CDS, including the 3 nts immediately preceding start codon
+                            elif strand==-1: #If CDS is located on reverse strand of chromosome i.e. reverse complement
+                                revcomp_gene=gb_record.seq[start:end+3] #extract entire CDS, including the 3 nts immediately following start codon (reversed)
+                                gene=revcomp_gene.reverse_complement() #reverse complements gene so it reads in forward direction
+                            total_gene_count+=1 #Adds up number of CDS sequences within file        
+                            if gene[3:6]=='ATG': #If start codon of gene is ATG
+                                ATG_count+=1 #Adds up number of ATG start codons within CDS sequences
+                                if gene[2]=='C': #If ATG start codon is immediately preceded by C i.e. FatI RE site
+                                    CATG_count+=1 
+                                elif gene[2]=='G':
+                                    GATG_count+=1
+                                elif gene[2]=='A':
+                                    AATG_count+=1
+                                elif gene[2]=='T':
+                                    TATG_count+=1      
+                            elif gene[3:6]=='GTG': #If start codon of gene is GTG
+                                GTG_count+=1 #Adds up number of GTG start codons within CDS sequences
+                                if gene[2]=='C': #If GTG start codon is immediately preceded by C
+                                    CGTG_count+=1 
+                                elif gene[2]=='G':
+                                    GGTG_count+=1
+                                elif gene[2]=='A':
+                                    AGTG_count+=1
+                                elif gene[2]=='T':
+                                    TGTG_count+=1    
+                            elif gene[3:6]=='TTG': #If start codon of gene is ATG
+                                TTG_count+=1 #Adds up number of TTG start codons within CDS sequences
+                                if gene[2]=='C': #If TTG start codon is immediately preceded by C
+                                    CTTG_count+=1 
+                                elif gene[2]=='G':
+                                    GTTG_count+=1
+                                elif gene[2]=='A':
+                                    ATTG_count+=1
+                                elif gene[2]=='T':
+                                    TTTG_count+=1  
+                    for n in gb_record.seq:
+                        if n=='C' or n=='G': 
+                            GC_count+=1 
+                    percentage_gc=round(GC_count/length*100,2)                      
+                    output = (filename + "," + gb_record.name + "," + description + "," + 
+                              str(length) + "," + str(GC_count) + "," + str(percentage_gc) + "," + str(total_gene_count) + "," +
+                              str(ATG_count) + "," + str(CATG_count) + "," + 
+                              str(GATG_count) + "," + str(AATG_count) + "," + str(TATG_count) + "," +
+                              str(GTG_count) + "," + str(CGTG_count) + "," + 
+                              str(GGTG_count) + "," + str(AGTG_count) + "," + str(TGTG_count) + "," +
+                              str(TTG_count) + "," + str(CTTG_count) + "," + 
+                              str(GTTG_count) + "," + str(ATTG_count) + "," + str(TTTG_count) + "," +"\n")
+                    write_handle.write(output)
+            print ("")
+
+write_handle.close()      
+print ("Complete")
